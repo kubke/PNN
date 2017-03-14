@@ -1,0 +1,339 @@
+---
+title: "PNN_histo_data"
+author: "MF Kubke"
+date: "2/22/2017"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE)
+```
+
+## R Markdown
+
+Set up environment to read files:
+Need to 
+
+* set working directory
+
+* provide correct filename
+
+* check data has been read as a data.frame
+
+
+
+```{r setupenv, echo = FALSE, eval = TRUE}
+
+setwd("/Volumes/myhome/GitHub/PNN/PNN_histology")
+pnndataLMAN = read.csv("PNN-histo-data-LMAN.csv") 
+pnndataRA = read.csv("PNN-histo-data-RA.csv")
+pnndata <- rbind(pnndataLMAN, pnndataRA)
+class(pnndataLMAN)
+class(pnndataRA)
+class(pnndata) #check it is a dataframe
+
+library(ggplot2) #calls ggplot2 which should be installed
+library(plyr) #need it for counts
+
+
+# this grabs 2 cols and merges into 1 using a "_" as a separator between the 2 values to identify the 4 conditions
+#using invivoenz_ichenz
+pnndataLMAN$method = paste(pnndataLMAN$invivoenz, pnndataLMAN$ichenz, sep="_") 
+pnndataRA$method = paste(pnndataRA$invivoenz, pnndataRA$ichenz, sep="_") 
+pnndata$method = paste(pnndata$invivoenz, pnndata$ichenz, sep="_") 
+
+
+```
+
+#Keys to what each group means:
+
+
+* 0_0 -> no in vivo injection, no enzyme on immuno
+
+* 0_1 -> no in vivo injection, enzyme on immuno
+
+* 1_0 -> in vivo injection, no enzyme on immuno
+
+* 1_1 -> in vivo injection, enzyme on immuno
+
+Week 0: No injection, control
+
+Week 1,2,3: Perfused 1,2,3 week after enzyme injection
+
+
+
+##PNN Data in RA and LMAN combined
+The data looks at each of the weeks post-injection, and the data are separated by the treatments above.
+Because it is plotted on log scale, there is an issue where values = 0, but still useful to see the clustering.
+
+```{r allcluster-perweek, echo = FALSE, eval = TRUE}
+
+pnndata0 <- pnndata[pnndata$postinjtime == 0, ]
+pnndata1 <- pnndata[pnndata$postinjtime == 1, ]
+pnndata2 <- pnndata[pnndata$postinjtime == 2, ]
+pnndata3 <- pnndata[pnndata$postinjtime == 3, ]
+
+ggplot(pnndata0, aes(pnnarea, gaparea, colour = method))  +
+  scale_y_log10(name="gap area", limits=c(1, 100000)) + #changed axes to log
+  scale_x_log10(name="pnn area", limits=c(1, 100000)) +
+  ggtitle("pnndata 0 weeks") +
+  geom_point(size=1)
+
+  
+ggplot(pnndata1, aes(pnnarea, gaparea, colour = method)) + 
+  scale_y_log10(name="gap area", limits=c(1, 100000)) + #changed axes to log
+  scale_x_log10(name="pnn area", limits=c(1, 100000)) +
+  ggtitle("pnndata 1 week post-injection") +
+  geom_point(size=1)
+  
+ggplot(pnndata2, aes(pnnarea, gaparea, colour = method)) + 
+  scale_y_log10(name="gap area", limits=c(1, 100000)) + #changed axes to log
+  scale_x_log10(name="pnn area", limits=c(1, 100000)) +
+  ggtitle("pnndata 2 weeks post-injection") +
+  geom_point(size=1) 
+
+ggplot(pnndata3, aes(pnnarea, gaparea, colour = method)) + 
+  scale_y_log10(name="gap area", limits=c(1, 100000)) + #changed axes to log
+  scale_x_log10(name="pnn area", limits=c(1, 100000)) +
+  ggtitle("pnndata 3 weeks post-injection") +
+  geom_point(size=1) 
+
+```
+
+
+Distribution for both regions all data combined
+
+```{r allcluster-permethod, echo = FALSE, eval = TRUE}
+
+#Distribution histograms for both regions, all data combined
+
+all_01 <-pnndata$gaparea[pnndata$method=="0_1"]
+all_00 <-pnndata$gaparea[pnndata$method=="0_0"]
+all_10 <-pnndata$gaparea[pnndata$method=="1_0"]
+all_11 <-pnndata$gaparea[pnndata$method=="1_1"]
+
+#total count
+ggplot() +
+  geom_histogram(aes(x=all_00, fill="0_0"),alpha=0.5, binwidth=500)+
+  geom_histogram(aes(x=all_01, fill="0_1"),alpha=0.5, binwidth=500)+
+  geom_histogram(aes(x=all_10, fill="1_0"),alpha=0.5, binwidth=500)+
+  geom_histogram(aes(x=all_11, fill="1_1"),alpha=0.5, binwidth=500)+
+  ggtitle("gaparea - RA + LMAN, distribution")+
+  scale_x_continuous(name= "gap area")+
+  scale_y_continuous("count")
+
+ggplot() +
+  geom_freqpoly(aes(x=all_00, colour="0_0"), binwidth=500)+ 
+  geom_freqpoly(aes(x=all_01, colour="0_1"), binwidth=500)+ 
+  geom_freqpoly(aes(x=all_10, colour="1_0"), binwidth=500)+ 
+  geom_freqpoly(aes(x=all_11, colour="1_1"), binwidth=500)+
+  ggtitle("gaparea - RA + LMAN, distribution")+
+  scale_x_continuous("gaparea")+
+  scale_y_continuous("count")
+
+
+#normalized
+ggplot() +
+  geom_freqpoly(aes(x=all_00, colour="0_0", ..density..), binwidth=500)+ 
+  geom_freqpoly(aes(x=all_01, colour="0_1", ..density..), binwidth=500)+ 
+  geom_freqpoly(aes(x=all_10, colour="1_0", ..density..), binwidth=500)+ 
+  geom_freqpoly(aes(x=all_11, colour="1_1", ..density..), binwidth=500)+
+  ggtitle("gaparea - RA + LMAN, distribution")+
+  scale_x_continuous(name= "pnn gap size")+
+  scale_y_continuous("normalized count")
+```
+  
+
+#Distribution histograms for both regions, per week
+(Just ignore)
+
+```{r disthistperweek, echo = FALSE, eval = TRUE}
+
+#Week 0
+
+wk0_01 <-pnndata0$gaparea[pnndata0$method=="0_1"]
+wk0_00 <-pnndata0$gaparea[pnndata0$method=="0_0"]
+
+#total count
+ggplot() +
+  geom_histogram(aes(x=wk0_00, fill="0_0"),alpha=0.5, binwidth=500)+
+  geom_histogram(aes(x=wk0_01, fill="0_1"),alpha=0.5, binwidth=500)+
+  ggtitle("gaparea - RA + LMAN, distribution - WEEK 0")+
+  scale_x_continuous(name= "gap area")+
+  scale_y_continuous("count")
+
+ggplot() +
+  geom_freqpoly(aes(x=all_00, colour="0_0"), binwidth=500)+ 
+  geom_freqpoly(aes(x=all_01, colour="0_1"), binwidth=500)+ 
+  ggtitle("gaparea - RA + LMAN, distribution WEEK 0")+
+  scale_x_continuous("gaparea")+
+  scale_y_continuous("count")
+
+
+#normalized
+ggplot() +
+  geom_freqpoly(aes(x=all_00, colour="0_0", ..density..), binwidth=500)+
+  geom_freqpoly(aes(x=all_01, colour="0_1", ..density..), binwidth=500)+ 
+  ggtitle("gaparea - RA + LMAN, distribution WEEK 0")+
+  scale_x_continuous(name= "pnn gap size")+
+  scale_y_continuous("normalized count")
+
+
+#week 1
+wk1_10 <-pnndata1$gaparea[pnndata1$method=="1_0"]
+wk1_11 <-pnndata1$gaparea[pnndata1$method=="1_1"]
+
+#total count
+
+#ggplot() +  geom_histogram(aes(x=wk1_10, fill="1_0"),alpha=0.5, binwidth=500)+  geom_histogram(aes(x=wk1_11, fill="1_1"),alpha=0.5, binwidth=500)+  ggtitle("gaparea - RA + LMAN, distribution - WEEK 1")+  scale_x_continuous(name= "gap area")+  scale_y_continuous("count")
+
+#ggplot() +  geom_freqpoly(aes(x=wk1_10, colour="1_0"), binwidth=500)+   geom_freqpoly(aes(x=wk1_11, colour="1_1"), binwidth=500)+  ggtitle("gaparea - RA + LMAN, distribution - WEEK 1")+  scale_x_continuous("gaparea")+  scale_y_continuous("count")
+
+
+#normalized
+#ggplot() +  geom_freqpoly(aes(x=wk1_10, colour="1_0", ..density..), binwidth=500)+   geom_freqpoly(aes(x=wk1_11, colour="1_1", ..density..), binwidth=500)+  ggtitle("gaparea - RA + LMAN, distribution - WEEK 1")+  scale_x_continuous(name= "pnn gap size")+  scale_y_continuous("normalized count")
+
+#week 2
+
+wk2_10 <-pnndata2$gaparea[pnndata2$method=="1_0"]
+wk2_11 <-pnndata2$gaparea[pnndata2$method=="1_1"]
+
+#total count
+ggplot() +
+  geom_histogram(aes(x=wk2_10, fill="1_0"),alpha=0.5, binwidth=300)+
+  geom_histogram(aes(x=wk2_11, fill="1_1"),alpha=0.5, binwidth=300)+
+  ggtitle("gaparea - RA + LMAN, distribution - WEEK 2")+
+  scale_x_continuous(name= "gap area")+
+  scale_y_continuous("count")
+
+ggplot() +
+  geom_freqpoly(aes(x=wk2_10, colour="1_0"), binwidth=300)+ 
+  geom_freqpoly(aes(x=wk2_11, colour="1_1"), binwidth=300)+
+  ggtitle("gaparea - RA + LMAN, distribution - WEEK 2")+
+  scale_x_continuous("gaparea")+
+  scale_y_continuous("count")
+
+
+#normalized
+
+ggplot() +
+  geom_freqpoly(aes(x=wk2_10, colour="1_0", ..density..), binwidth=300)+ 
+  geom_freqpoly(aes(x=wk2_11, colour="1_1", ..density..), binwidth=300)+
+  ggtitle("gaparea - RA + LMAN, distribution - WEEK 2")+
+  scale_x_continuous(name= "pnn gap size")+
+  scale_y_continuous("normalized count")
+
+#week 3
+
+wk3_10 <-pnndata3$gaparea[pnndata3$method=="1_0"]
+wk3_11 <-pnndata3$gaparea[pnndata3$method=="1_1"]
+
+#total count
+ggplot() +
+  geom_histogram(aes(x=wk3_10, fill="1_0"),alpha=0.5, binwidth=300)+
+  geom_histogram(aes(x=wk3_11, fill="1_1"),alpha=0.5, binwidth=300)+
+  ggtitle("gaparea - RA + LMAN, distribution  - WEEK 3")+
+  scale_x_continuous(name= "gap area")+
+  scale_y_continuous("count")
+
+ggplot() +
+  geom_freqpoly(aes(x=wk3_10, colour="1_0"), binwidth=500)+ 
+  geom_freqpoly(aes(x=wk3_11, colour="1_1"), binwidth=500)+
+  ggtitle("gaparea - RA + LMAN, distribution  - WEEK 3")+
+  scale_x_continuous("gaparea")+
+  scale_y_continuous("count")
+
+
+#normalized
+ggplot() +
+  geom_freqpoly(aes(x=wk3_10, colour="1_0", ..density..), binwidth=500)+ 
+  geom_freqpoly(aes(x=wk3_11, colour="1_1", ..density..), binwidth=500)+
+  ggtitle("gaparea - RA + LMAN, distribution  - WEEK 3")+
+  scale_x_continuous(name= "pnn gap size")+
+  scale_y_continuous("normalized count")
+
+```
+
+#comparisons between weeks
+(can show you these if you want)
+
+```{r comparisonsbetweenweeks, echo = FALSE, eval = TRUE}
+#total count
+ggplot() +
+  geom_histogram(aes(x=wk0_00, fill="wk0"),alpha=0.5, binwidth=500)+
+  #geom_histogram(aes(x=wk1_10, fill="1_1"),alpha=0.5, binwidth=500)+
+  geom_histogram(aes(x=wk2_10, fill="wk2"),alpha=0.5, binwidth=500)+
+  geom_histogram(aes(x=wk3_10, fill="wk3"),alpha=0.5, binwidth=500)+
+  ggtitle("gaparea - RA + LMAN, distribution  - WEEK 1-3")+
+  scale_x_continuous(name= "gap area")+
+  scale_y_continuous("count")
+
+ggplot() +
+  geom_freqpoly(aes(x=wk0_00, colour="wk0"), binwidth=500)+ 
+  #geom_freqpoly(aes(x=wk1_10, colour="wk1"), binwidth=500)+
+  geom_freqpoly(aes(x=wk2_10, colour="wk2"), binwidth=500)+
+  geom_freqpoly(aes(x=wk3_10, colour="wk3"), binwidth=500)+
+  ggtitle("gaparea - RA + LMAN, distribution  - WEEK 1-3")+
+  scale_x_continuous("gaparea")+
+  scale_y_continuous("count")
+
+#normalized
+
+ggplot() +
+  geom_freqpoly(aes(x=wk0_00, colour="wk0", ..density..), binwidth=500)+ 
+  #geom_freqpoly(aes(x=wk1_10, colour="wk1", ..density..), binwidth=500)+
+  geom_freqpoly(aes(x=wk2_10, colour="wk2", ..density..), binwidth=500)+
+  geom_freqpoly(aes(x=wk3_10, colour="wk3", ..density..), binwidth=500)+
+  ggtitle("gaparea - RA + LMAN, distribution  - WEEK 1-3")+
+  scale_x_continuous(name= "pnn gap size")+
+  scale_y_continuous("normalized count")
+```
+
+#Box Plots
+These seem to suggest that the enzyme is removing the PNNs, and that these are not back by week 3.
+
+First plot shows the control brain (no enzyme injected in vivo) and the gap size whether enzyme was not or was added to the immuno slide - it shows that, on this metric, the values of the 'gap' drop as an enzyme.
+
+The second plot shows the values for 'gapsize' for the control (week 0, whihc did not get enzyme injection), and the results for animals that recieved injections and were perfused 2, or 3 weeks after. Both injected brains show that, based on the criterion we are using, they lost the PNNs, and also htat they dont seem to be able to come back by Week 3. 
+
+The last plot shows the same 3 brains as above, but where the enzyme was applied to the immuno slide - showing that we lose the pnns (based on our criteria) even in the control. 
+
+
+```{r boxplots, echo = FALSE, eval = TRUE}
+
+#Comparison between with or without enzyme on slide
+#wk0_00 vs wk0_01
+
+#Nwk0 <- count(pnn_noenz$postinjtime == 0)
+#Nwk1 <- count(pnn_noenz$postinjtime == 1)
+#Nwk2 <- count(pnn_noenz$postinjtime == 2)
+#Nwk3 <- count(pnn_noenz$postinjtime == 3)
+
+#cat("N for Wk 0: ", Nwk0[2,2])
+#cat("N for Wk 1: ", Nwk1[2,2])
+#cat("N for Wk 2: ", Nwk2[2,2])
+#cat("N for Wk 3: ", Nwk3[2,2])
+
+ggplot(pnndata0, aes(method, gaparea, colour=method))+
+  geom_point(size=1)
+ggplot(pnndata0, aes(method, gaparea, colour=method))+
+  geom_boxplot()
+
+#compare PNNs control over weeks
+
+pnn_noenz <- pnndata[pnndata$ichenz == 0, ]
+
+ggplot(pnn_noenz, aes(factor(postinjtime), gaparea))+
+  geom_boxplot()
+
+#compare where enzyme was ued on slide
+pnn_ichenz <- pnndata[pnndata$ichenz == 1, ]
+
+ggplot(pnn_ichenz, aes(factor(postinjtime), gaparea))+
+  geom_boxplot()
+```
+
+
+
+
+
